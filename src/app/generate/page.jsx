@@ -91,7 +91,7 @@ export default function Shorten() {
       .then(() => {
         setShortURL("");
         setUrl("");
-        setGenerated(`${process.env.NEXT_PUBLIC_HOST}/${shortURL}`);
+        setGenerated(`${window.location.origin}/${shortURL}`);
         setLoading(false);
       })
       .catch((error) => console.error(error));
