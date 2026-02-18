@@ -170,7 +170,7 @@ export default function Shorten() {
             <button
               onClick={generate}
               disabled={loading}
-              className="w-full relative py-5 bg-slate-900 text-white rounded-2xl font-bold overflow-hidden transition-all hover:bg-black active:scale-[0.98] shadow-2xl shadow-slate-300"
+              className="w-full relative cursor-pointer py-5 bg-slate-900 text-white rounded-2xl font-bold overflow-hidden transition-all hover:bg-black active:scale-[0.98] shadow-2xl shadow-slate-300"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
