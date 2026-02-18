@@ -1,146 +1,231 @@
-"use client"
-import React, { useState } from "react";
+"use client";
+import React, { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { MeshDistortMaterial, Sphere, Float } from "@react-three/drei";
+import gsap from "gsap";
+
+// --- 3D Background Component ---
+function AnimatedBackground() {
+  return (
+    <div className="absolute inset-0 z-0 pointer-events-none">
+      <Canvas camera={{ position: [0, 0, 5] }}>
+        <ambientLight intensity={1.5} />
+        <directionalLight position={[10, 10, 5]} intensity={2} />
+        <Float speed={4} rotationIntensity={1} floatIntensity={2}>
+          <Sphere args={[1.5, 100, 100]} scale={1.8}>
+            <MeshDistortMaterial
+              color="#3b82f6"
+              speed={3}
+              distort={0.4}
+              radius={1}
+              opacity={0.1}
+              transparent
+            />
+          </Sphere>
+        </Float>
+      </Canvas>
+    </div>
+  );
+}
 
 export default function Shorten() {
   const [url, setUrl] = useState("");
   const [shortURL, setShortURL] = useState("");
-  const [generated, setGenerated] = useState(false);
+  const [generated, setGenerated] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
-  function handleChange() {}
+  // Refs for GSAP
+  const containerRef = useRef(null);
+  const cardRef = useRef(null);
+  const headerRef = useRef(null);
+
+  useEffect(() => {
+    const ctx = gsap.context(() => {
+      // Entrance Animation
+      const tl = gsap.timeline();
+      tl.from(headerRef.current.children, {
+        y: 30,
+        opacity: 0,
+        duration: 0.8,
+        stagger: 0.2,
+        ease: "power4.out",
+      }).from(
+        cardRef.current,
+        {
+          y: 50,
+          opacity: 0,
+          duration: 1,
+          ease: "expo.out",
+        },
+        "-=0.4",
+      );
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, []);
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generated);
+    setCopied(true);
+    gsap.to(".copy-btn", { scale: 1.05, duration: 0.1, yoyo: true, repeat: 1 });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  function generate() {
+    if (!url) return;
+    setLoading(true);
+
+    const myHeaders = new Headers();
+    myHeaders.append("Content-Type", "application/json");
+    const raw = JSON.stringify({ url: url, shortUrl: shortURL });
+    const requestOptions = {
+      method: "POST",
+      headers: myHeaders,
+      body: raw,
+      redirect: "follow",
+    };
+    fetch("/api/generate", requestOptions)
+      .then((response) => response.json())
+      .then(() => {
+        setShortURL("");
+        setUrl("");
+        setGenerated(`${process.env.NEXT_PUBLIC_HOST}/${shortURL}`);
+        setLoading(false);
+      })
+      .catch((error) => console.error(error));
+
+    // API Call Mock (Replace with your actual fetch)
+
+    // Animate result entrance
+    gsap.fromTo(
+      ".result-box",
+      { scale: 0.9, opacity: 0 },
+      { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.7)" },
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-16 px-4">
-      <div className="max-w-3xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-12 space-y-4">
-          <div className="inline-block">
-            <span className="text-sm font-bold tracking-wider text-blue-600 bg-blue-100 px-5 py-2 rounded-full uppercase">
-              ✨ Link Shortener
-            </span>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-black text-gray-900 tracking-tight">
-            Generate Your{" "}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600">
-              Short URL
-            </span>
+    <main
+      ref={containerRef}
+      className="relative min-h-screen  pt-32 bg-slate-50 flex items-center justify-center px-4 overflow-hidden"
+    >
+      {/* Three.js Background */}
+      <AnimatedBackground />
+
+      <div className="relative z-10 w-full max-w-xl">
+        {/* Header Section */}
+        <div ref={headerRef} className="text-center mb-12">
+          <span className="inline-block px-4 py-1.5 mb-4 text-xs font-bold tracking-widest text-blue-600 uppercase bg-blue-50 rounded-full border border-blue-100">
+            Next Gen Shortener
+          </span>
+          <h1 className="text-5xl md:text-6xl font-black text-slate-900 tracking-tighter mb-4">
+            Shrink <span className="text-blue-600">Links.</span>
+            <br />
+            Expand <span className="text-indigo-500">Reach.</span>
           </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Transform long, complex URLs into clean, shareable links in seconds
+          <p className="text-slate-500 text-lg">
+            The ultra-minimalist way to share the web.
           </p>
         </div>
 
         {/* Form Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 border border-gray-100 backdrop-blur-sm">
-          <div className="space-y-6">
-            {/* Original URL Input */}
-            <div className="space-y-3">
-              <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">
-                Original URL
+        <div
+          ref={cardRef}
+          className="bg-white/80 backdrop-blur-xl border border-white shadow-[0_32px_64px_-16px_rgba(0,0,0,0.1)] rounded-[32px] p-8 md:p-10"
+        >
+          <div className="space-y-5">
+            <div className="group">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1">
+                Target Destination
               </label>
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl opacity-0 group-hover:opacity-10 blur transition-opacity duration-300" />
+              <input
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                type="text"
+                placeholder="https://your-long-link.com"
+                className="w-full bg-slate-100/50 border border-transparent focus:border-blue-500/20 focus:bg-white text-slate-800 px-6 py-4 rounded-2xl outline-none transition-all placeholder:text-slate-400 shadow-inner"
+              />
+            </div>
+
+            <div className="group">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1">
+                Branded Alias
+              </label>
+              <div className="flex items-center gap-0">
+                <div className="bg-slate-200/50 text-slate-500 px-5 py-4 rounded-l-2xl text-sm font-semibold border-r border-slate-200">
+                  bit.ly/
+                </div>
                 <input
-                  value={url}
+                  value={shortURL}
+                  onChange={(e) => setShortURL(e.target.value)}
                   type="text"
-                  placeholder="https://example.com/very/long/url/path"
-                  onChange={(e) => setUrl(e.target.value)}
-                  className="relative w-full px-6 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200 outline-none placeholder:text-gray-400"
+                  placeholder="custom-name"
+                  className="w-full bg-slate-100/50 border border-transparent focus:border-blue-500/20 focus:bg-white text-slate-800 px-6 py-4 rounded-r-2xl outline-none transition-all placeholder:text-slate-400 shadow-inner"
                 />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                    />
-                  </svg>
-                </div>
               </div>
             </div>
 
-            {/* Custom Short URL Input */}
-            <div className="space-y-3">
-              <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">
-                Custom Short Link{" "}
-                <span className="text-gray-400 font-normal normal-case">
-                  (Optional)
+            <button
+              onClick={generate}
+              disabled={loading}
+              className="w-full relative py-5 bg-slate-900 text-white rounded-2xl font-bold overflow-hidden transition-all hover:bg-black active:scale-[0.98] shadow-2xl shadow-slate-300"
+            >
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Generating...
                 </span>
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl opacity-0 group-hover:opacity-10 blur transition-opacity duration-300" />
-                <div className="relative flex items-center">
-                  <span className="absolute left-6 text-gray-500 font-medium">
-                    bitlinks.co/
-                  </span>
-                  <input
-                    value={shortURL}
-                    type="text"
-                    placeholder="my-custom-link"
-                    onChange={(e) => setShortURL(e.target.value)}
-                    className="relative w-full pl-32 pr-6 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 transition-all duration-200 outline-none placeholder:text-gray-400"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Generate Button */}
-            <button className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white text-lg font-bold py-5 rounded-xl shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-200 uppercase tracking-wide relative overflow-hidden group">
-              <span className="relative z-10 flex items-center justify-center gap-3">
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 10V3L4 14h7v7l9-11h-7z"
-                  />
-                </svg>
-                Generate Short Link
-              </span>
-              <div className="absolute inset-0 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              ) : (
+                "Generate Magic Link"
+              )}
             </button>
           </div>
 
-          {/* Info Text */}
-          <div className="mt-8 pt-8 border-t border-gray-200">
-            <div className="flex items-start gap-3 text-sm text-gray-600">
-              <svg
-                className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5"
-                fill="currentColor"
-                viewBox="0 0 20 20"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <p>
-                <strong className="font-semibold text-gray-900">
-                  Pro tip:
-                </strong>{" "}
-                Leave the custom link empty to auto-generate a random short URL,
-                or enter your preferred custom alias for a branded link.
-              </p>
+          {/* Result Box */}
+          {generated && (
+            <div className="result-box mt-8 bg-blue-50 rounded-2xl p-6 border border-blue-100">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex-1 overflow-hidden text-center md:text-left">
+                  <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">
+                    Success! Your link is ready
+                  </p>
+                  <Link
+                    href={generated}
+                    target="_blank"
+                    className="text-blue-700 font-bold text-xl truncate block"
+                  >
+                    {generated}
+                  </Link>
+                </div>
+                <button
+                  onClick={copyToClipboard}
+                  className="copy-btn whitespace-nowrap bg-white text-blue-600 border border-blue-200 px-8 py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all active:scale-95"
+                >
+                  {copied ? "Copied! ✨" : "Copy"}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Decorative Elements */}
-        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob" />
-        <div className="absolute top-40 right-10 w-72 h-72 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000" />
-        <div className="absolute bottom-20 left-1/2 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000" />
+        {/* Trust Badges */}
+        <div className="mt-12 flex justify-center items-center gap-8 opacity-40 grayscale hover:grayscale-0 transition-all duration-700">
+          <div className="flex items-center gap-2 font-bold text-slate-900">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2L1 21h22L12 2zm0 3.45l8.27 14.3H3.73L12 5.45z" />
+            </svg>
+            SECURE
+          </div>
+          <div className="flex items-center gap-2 font-bold text-slate-900">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            FAST
+          </div>
+        </div>
       </div>
-    </div>
+    </main>
   );
 }
