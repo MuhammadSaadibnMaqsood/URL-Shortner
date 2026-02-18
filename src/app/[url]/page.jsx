@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 export default async function Page({ params }) {
   const shortUrl = (await params).url;
   console.log("this is slug: ", shortUrl);
-  
 
   const client = await clientPromise;
   const db = client.db("bitlinks");
@@ -17,7 +16,6 @@ export default async function Page({ params }) {
   if (doc) {
     redirect(doc.url);
   } else {
-    redirect(`${process.env.NEXT_PUBLIC_HOST}`);
+    redirect("/");
   }
-  return <div>My Post: {url}</div>;
 }
